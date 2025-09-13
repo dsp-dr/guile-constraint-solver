@@ -1,0 +1,38 @@
+=== Implementation Details ===
+
+## Makefile Design Decisions:
+- BUILD_DIR=.build for all generated files and sentinels
+- Sentinel files (.setup-done, .deps-installed) ensure idempotent operations
+- Pattern rules: $(BUILD_DIR)/test-%.done and $(BUILD_DIR)/%.done for scalability
+- GUILE := guile3 explicitly targets Guile 3.x
+- Order-only prerequisites (|) prevent unnecessary rebuilds
+
+## Z3 Interface Robustness:
+- Replaced pipe-based communication with temp files to fix Guile 3 segfaults
+- Added proper error handling with catch blocks
+- Temp files: /tmp/z3-input.smt2 and /tmp/z3-output.txt for reliability
+
+## Emacs Integration Architecture:
+- Auto-detection via locate-dominating-file finding setup.org
+- Mode-specific keymaps: gcs-guile-mode-map, gcs-z3-mode-map, gcs-lean-mode-map
+- File templates for rapid constraint problem development
+- Geiser integration with project-specific load paths
+
+## Build Performance:
+- Sentinel-based dependency tracking prevents redundant work
+- Parallel test execution via pattern rules
+- Automatic variable usage ($@, $<) for maintainability
+
+## Testing Infrastructure:
+- Fixed SRFI imports for Guile 3 compatibility
+- Added robust test harness with .done sentinels
+- Support for both unit and integration test patterns
+
+## Development Workflow:
+- gmake help as default provides immediate guidance
+- Color-coded help output for better UX
+- Clean separation of concerns: setup, test, examples, cleanup
+- Comprehensive .gitignore prevents tracking of ephemeral files
+
+This implementation provides a solid foundation for constraint solving research
+with proper development practices and cross-platform compatibility.
