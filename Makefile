@@ -1,10 +1,13 @@
-.PHONY: all setup test examples clean tutorial
+.PHONY: all setup test examples clean tutorial setup-lean4
 
 all: setup
 
 setup:
 	sh scripts/create-structure.sh
 	sh scripts/install-deps.sh
+
+setup-lean4:
+	sh scripts/install-lean4.sh
 
 test:
 	guile -L ./src tests/unit/test-change-making.scm

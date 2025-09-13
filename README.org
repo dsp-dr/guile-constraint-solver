@@ -30,6 +30,9 @@ cd guile-constraint-solver
 
 # Run setup (installs dependencies and creates structure)
 make setup
+
+# Optional: Install Lean 4 for additional theorem proving capabilities
+make setup-lean4
 #+END_SRC
 
 * Usage
