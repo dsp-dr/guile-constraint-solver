@@ -1,0 +1,59 @@
+# Emacs temporary and backup files
+*~
+\#*\#
+.\#*
+.emacs.desktop
+.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Emacs temp files
+*~
+.#*
+\#*\#
+
+# Org-mode
+.org-id-locations
+*_archive
+ltximg/
+
+# Guile compiled files
+*.go
+**/*.go
+
+# Guile core dumps
+core
+core.*
+vgcore.*
+
+# Guile cache
+.cache/
+**/.cache/
+
+# Build artifacts
+.build/
+build/
+dist/
+*.tar.gz
+*.zip
+
+# Sentinel files
+.setup-done
+.deps-installed
+.lean4-installed
+.structure-created
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.temp
+*.log

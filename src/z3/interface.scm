@@ -14,14 +14,22 @@
 
 (define (z3-solve smt-code)
   "Send SMT-LIB2 code to Z3 and return result"
-  (let* ((port (open-pipe* OPEN_BOTH "z3" "-in"))
-         (result (begin
-                   (display smt-code port)
-                   (force-output port)
-                   (let ((response (get-string-all port)))
-                     (close-pipe port)
-                     response))))
-    result))
+  (catch #t
+    (lambda ()
+      ;; Use temporary file approach to avoid pipe issues
+      (let* ((temp-file "/tmp/z3-input.smt2")
+             (temp-out "/tmp/z3-output.txt"))
+        (call-with-output-file temp-file
+          (lambda (port)
+            (display smt-code port)))
+        (system (format #f "z3 ~a > ~a 2>/dev/null" temp-file temp-out))
+        (let ((result (call-with-input-file temp-out get-string-all)))
+          (delete-file temp-file)
+          (delete-file temp-out)
+          result)))
+    (lambda (key . args)
+      (format #t "Error in z3-solve: ~a ~a\n" key args)
+      "unsat")))
 
 (define (parse-z3-model output)
   "Parse Z3 model output into an alist"

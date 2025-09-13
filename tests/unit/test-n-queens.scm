@@ -1,4 +1,5 @@
 (use-modules (srfi srfi-64)
+             (srfi srfi-1)  ; for delete-duplicates, every, iota
              (problems n-queens))
 
 (test-begin "n-queens")
