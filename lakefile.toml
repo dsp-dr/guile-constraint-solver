@@ -1,0 +1,9 @@
+name = "constraint-solver"
+defaultTargets = ["ConstraintSolver"]
+
+[[lean_lib]]
+name = "ConstraintSolver"
+
+[[lean_exe]]
+name = "examples"
+root = "Examples"

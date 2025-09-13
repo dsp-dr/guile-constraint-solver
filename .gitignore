@@ -44,6 +44,12 @@ dist/
 .deps-installed
 .lean4-installed
 .structure-created
+.lean4-built
+
+# Lean4 build artifacts
+.lake/
+build/
+lake-packages/
 
 # OS specific
 .DS_Store

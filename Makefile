@@ -19,6 +19,7 @@ LEAN4_SENTINEL := $(BUILD_DIR)/.lean4-installed
 
 # Phony targets
 .PHONY: help all setup setup-lean4 test examples tutorial graph-coloring clean distclean tangle
+.PHONY: lean-build lean-run lean-verify lean-all compare
 
 help: ## Show this help message
 	@echo "Guile Constraint Solver - Available targets:"
@@ -111,6 +112,32 @@ distclean: clean ## Deep clean including sentinel files and caches
 	@find . -name "core.*" -delete 2>/dev/null || true
 	@find . -name "vgcore.*" -delete 2>/dev/null || true
 
+# Lean4 integration
+LEAN4_BUILD_SENTINEL := $(BUILD_DIR)/.lean4-built
+LAKE := lake
+
+lean-build: $(LEAN4_BUILD_SENTINEL) ## Build Lean4 constraint solver
+
+$(LEAN4_BUILD_SENTINEL): lakefile.toml $(wildcard ConstraintSolver/*.lean) | $(BUILD_DIR)
+	@echo "==> Building Lean4 project..."
+	@$(LAKE) build
+	@touch $@
+
+lean-run: $(LEAN4_BUILD_SENTINEL) ## Run Lean4 examples
+	@echo "==> Running Lean4 examples..."
+	@$(LAKE) exe examples
+
+lean-verify: $(LEAN4_BUILD_SENTINEL) ## Verify Lean4 proofs
+	@echo "==> Verifying Lean4 proofs..."
+	@$(LAKE) env lean ConstraintSolver/Verification.lean
+
+lean-all: lean-build lean-run lean-verify ## Run all Lean4 tasks
+
+compare: examples lean-run ## Compare Guile and Lean4 solutions
+	@echo "==> Comparing solutions..."
+	@chmod +x scripts/compare-solutions.scm
+	@./scripts/compare-solutions.scm
+
 # Debug target to show variables
 debug: ## Show Makefile variables for debugging
 	@echo "GUILE: $(GUILE)"
@@ -120,3 +147,4 @@ debug: ## Show Makefile variables for debugging
 	@echo "TEST_TARGETS: $(TEST_TARGETS)"
 	@echo "EXAMPLE_SOURCES: $(EXAMPLE_SOURCES)"
 	@echo "TANGLED_FILES: $(TANGLED_FILES)"
+	@echo "LAKE: $(LAKE)"
