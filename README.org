@@ -1,9 +1,14 @@
-# Guile Constraint Solver
+#+TITLE: Guile Constraint Solver
+#+AUTHOR: dsp-dr
+
+[[https://img.shields.io/badge/language-Guile%20Scheme-blue.svg][https://img.shields.io/badge/language-Guile%20Scheme-blue.svg]]
+[[https://img.shields.io/badge/solver-Z3%20SMT-green.svg][https://img.shields.io/badge/solver-Z3%20SMT-green.svg]]
+[[https://img.shields.io/badge/license-MIT-orange.svg][https://img.shields.io/badge/license-MIT-orange.svg]]
 
 Constraint solving approaches in Guile Scheme, inspired by Hillel Wayne's
 "Many Hard Leetcode Problems are Easy Constraint Problems" article.
 
-## Features
+* Features
 
 - Native Guile constraint propagation engine with backtracking
 - Z3 SMT solver integration via SMT-LIB2
@@ -14,22 +19,22 @@ Constraint solving approaches in Guile Scheme, inspired by Hillel Wayne's
   - Graph coloring (CSP + Z3)
 - Performance comparison between different solving approaches
 
-## Installation
+* Installation
 
 On FreeBSD:
 
-```bash
+#+BEGIN_SRC bash
 # Clone the repository
 git clone https://github.com/dsp-dr/guile-constraint-solver.git
 cd guile-constraint-solver
 
 # Run setup (installs dependencies and creates structure)
 make setup
-```
+#+END_SRC
 
-## Usage
+* Usage
 
-```scheme
+#+BEGIN_SRC scheme
 ;; Coin change problem
 (use-modules (problems change-making))
 (make-change-dp 37 '(10 9 1))  ; => (10 9 9 9)
@@ -41,11 +46,11 @@ make setup
 ;; Graph coloring
 (use-modules (problems graph-coloring))
 (graph-coloring-csp graph 5 3)  ; => 3-color solution
-```
+#+END_SRC
 
-## Examples
+* Examples
 
-```bash
+#+BEGIN_SRC bash
 # Run basic tutorial
 make tutorial
 
@@ -54,17 +59,17 @@ make examples
 
 # Graph coloring demo
 make graph-coloring
-```
+#+END_SRC
 
-## Testing
+* Testing
 
-```bash
+#+BEGIN_SRC bash
 make test
-```
+#+END_SRC
 
-## Project Structure
+* Project Structure
 
-```
+#+BEGIN_EXAMPLE
 src/
 ├── core/constraint-engine.scm    # Native CSP solver
 ├── z3/interface.scm              # Z3 SMT integration
@@ -78,8 +83,8 @@ examples/
 └── leetcode/graph-coloring.scm   # LeetCode-style problems
 tests/
 └── unit/                         # Unit tests
-```
+#+END_EXAMPLE
 
-## License
+* License
 
 MIT License
