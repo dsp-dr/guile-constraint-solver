@@ -1,0 +1,91 @@
+=== Lean4 Integration Journey ===
+
+## Context:
+After establishing a solid foundation with Guile Scheme and Z3 SMT solver,
+we added Lean4 to create a comprehensive constraint solving framework with
+formal verification capabilities.
+
+## Architecture Decisions:
+
+1. **Three-Language Approach**:
+   - Guile: Rapid prototyping and native CSP implementation
+   - Z3: SMT solving for constraint satisfaction
+   - Lean4: Formal verification and proof of correctness
+
+2. **Org-mode Literate Programming**:
+   - lean4-integration.org serves as documentation and source
+   - Tangling generates all Lean4 source files
+   - Maintains consistency with setup.org approach
+
+3. **Lake Build System**:
+   - Standard Lean4 project structure
+   - Executable for running examples
+   - Library for verification framework
+
+4. **Problem Selection**:
+   All problems from Hillel Wayne's article:
+   - Change Making: DP with optimality proofs
+   - Stock Trading: Profit maximization with invariants
+   - Three Sum: Constraint formulation with sign assignment
+   - Histogram Rectangle: Geometric constraints
+
+5. **Verification Strategy**:
+   - Use omega tactic for arithmetic proofs (Z3 backend)
+   - Property-based testing framework
+   - Comparison framework between implementations
+
+## Implementation Details:
+
+1. **Sentinel Integration**:
+   - .lean4-built sentinel for idempotent builds
+   - Consistent with existing gmake patterns
+
+2. **Proof Techniques**:
+   - omega tactic leverages Z3 for arithmetic
+   - Structural proofs for algorithm properties
+   - sorry placeholders for complex proofs
+
+3. **Interoperability**:
+   - compare-solutions.scm bridges Guile and Lean4
+   - Common problem instances across languages
+   - Verification of solution equivalence
+
+## Build Flow:
+1. gmake setup-lean4        # Install Lean4 toolchain
+2. gmake lean-build        # Build Lean4 project
+3. gmake lean-run          # Execute examples
+4. gmake lean-verify       # Check proofs
+5. gmake compare          # Compare all implementations
+
+## File Organization:
+```
+ConstraintSolver/          # Lean4 library
+├── Basic.lean            # Core types
+├── ChangeMaking.lean     # DP implementation
+├── StockTrading.lean     # Trading algorithms
+├── ThreeSum.lean         # Constraint problems
+├── Histogram.lean        # Geometric problems
+└── Verification.lean     # Proof framework
+
+Examples/
+└── Main.lean            # Executable entry point
+
+scripts/
+└── compare-solutions.scm # Cross-language comparison
+```
+
+## Testing Approach:
+- Unit proofs for individual properties
+- Integration tests via example execution
+- Cross-validation between implementations
+- Formal verification of optimality claims
+
+## Future Extensions:
+- More sophisticated proof automation
+- Performance benchmarking framework
+- Additional constraint problems
+- Interactive proof development
+
+This integration completes the vision of a multi-paradigm
+constraint solving framework with both computational and
+verification capabilities.
