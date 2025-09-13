@@ -3,7 +3,7 @@
 
 ;;; tutorials/basic-csp.scm --- Basic CSP tutorial and examples
 
-(add-to-load-path (dirname (dirname (dirname (current-filename)))))
+(add-to-load-path (dirname (dirname (dirname (dirname (current-filename))))))
 
 (use-modules (core constraint-engine)
              (problems n-queens)

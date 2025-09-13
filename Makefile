@@ -4,7 +4,7 @@ GUILE := guile3
 GUILE_FLAGS := -L ./src
 EMACS := emacs
 TEST_DIR := tests/unit
-EXAMPLE_DIR := examples
+EXAMPLE_DIR := tests/examples
 SRC_DIR := src
 BUILD_DIR := .build
 

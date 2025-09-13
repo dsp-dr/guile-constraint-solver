@@ -3,7 +3,7 @@
 
 ;;; leetcode/graph-coloring.scm --- Graph coloring constraint problem
 
-(add-to-load-path (dirname (dirname (dirname (current-filename)))))
+(add-to-load-path (dirname (dirname (dirname (dirname (current-filename))))))
 
 (use-modules (core constraint-engine)
              (z3 interface)

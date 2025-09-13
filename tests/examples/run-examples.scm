@@ -1,8 +1,7 @@
 #!/usr/bin/env guile
-#!/usr/bin/env guile
 !#
 
-(add-to-load-path (dirname (dirname (current-filename))))
+(add-to-load-path (dirname (dirname (dirname (current-filename)))))
 
 (use-modules (problems change-making)
              (ice-9 format))
