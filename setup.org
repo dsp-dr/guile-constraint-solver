@@ -1,0 +1,489 @@
+#+TITLE: Guile Constraint Solver Setup
+#+AUTHOR: dsp-dr
+#+DATE: [2025-09-13 Sat]
+#+PROPERTY: header-args:scheme :results output :exports both :mkdirp yes
+#+PROPERTY: header-args:mermaid :exports results :mkdirp yes
+#+PROPERTY: header-args:sh :results output :exports both
+
+* Project Overview
+Implementation of constraint solving approaches in Guile, inspired by Hillel Wayne's 
+"Many Hard Leetcode Problems are Easy Constraint Problems" article.
+
+** Features
+- Native Guile constraint propagation engine
+- Z3 SMT solver integration via SMT-LIB2
+- Examples from leetcode-style problems
+- Comparison between native and Z3 approaches
+
+* System Requirements
+** FreeBSD Setup
+#+BEGIN_SRC sh :tangle scripts/install-deps.sh :shebang #!/bin/sh
+#!/bin/sh
+# Install dependencies on FreeBSD
+
+echo "Installing Z3 SMT solver..."
+sudo pkg install -y z3
+
+echo "Installing Guile 3.x if not present..."
+sudo pkg install -y guile3
+
+echo "Checking installations..."
+z3 --version
+guile --version
+#+END_SRC
+
+** Guile Dependencies
+#+BEGIN_SRC scheme :tangle .guile
+;; Local Guile configuration
+(add-to-load-path (dirname (current-filename)))
+(add-to-load-path (string-append (dirname (current-filename)) "/lib"))
+(add-to-load-path (string-append (dirname (current-filename)) "/src"))
+#+END_SRC
+
+* Project Structure
+#+BEGIN_SRC mermaid :file docs/project-structure.png
+graph TD
+    A[guile-constraint-solver] --> B[src/]
+    A --> C[lib/]
+    A --> D[examples/]
+    A --> E[tests/]
+    A --> F[docs/]
+    
+    B --> B1[core/constraint-engine.scm]
+    B --> B2[z3/interface.scm]
+    B --> B3[problems/]
+    
+    C --> C1[utilities.scm]
+    
+    D --> D1[leetcode/]
+    D --> D2[tutorials/]
+    
+    E --> E1[unit/]
+    E --> E2[integration/]
+#+END_SRC
+
+** Directory Creation
+#+BEGIN_SRC sh :tangle scripts/create-structure.sh :shebang #!/bin/sh
+#!/bin/sh
+# Create project structure
+
+mkdir -p src/{core,z3,problems}
+mkdir -p lib
+mkdir -p examples/{leetcode,tutorials}
+mkdir -p tests/{unit,integration}
+mkdir -p docs/diagrams
+mkdir -p scripts
+
+echo "Project structure created!"
+#+END_SRC
+
+* Core Library
+** Z3 Interface Module
+#+BEGIN_SRC scheme :tangle src/z3/interface.scm
+;;; z3/interface.scm --- Z3 SMT solver interface for Guile
+
+(define-module (z3 interface)
+  #:use-module (ice-9 popen)
+  #:use-module (ice-9 textual-ports)
+  #:use-module (ice-9 match)
+  #:use-module (srfi srfi-1)
+  #:export (z3-solve
+            parse-z3-model
+            make-smt-var
+            smt-assert
+            smt-minimize
+            smt-maximize))
+
+(define (z3-solve smt-code)
+  "Send SMT-LIB2 code to Z3 and return result"
+  (let* ((port (open-pipe* OPEN_BOTH "z3" "-in"))
+         (result (begin
+                   (display smt-code port)
+                   (force-output port)
+                   (let ((response (get-string-all port)))
+                     (close-pipe port)
+                     response))))
+    result))
+
+(define (parse-z3-model output)
+  "Parse Z3 model output into an alist"
+  (let ((lines (string-split output #\newline)))
+    (filter-map
+     (lambda (line)
+       (match (string-split line #\space)
+         (("(define-fun" name "()" type value ")")
+          (cons (string->symbol name)
+                (cond ((string=? value "true") #t)
+                      ((string=? value "false") #f)
+                      ((string->number value) => identity)
+                      (else value))))
+         (_ #f)))
+     lines)))
+
+(define (make-smt-var name type)
+  "Generate SMT variable declaration"
+  (format #f "(declare-const ~a ~a)" name type))
+
+(define (smt-assert expr)
+  "Generate SMT assertion"
+  (format #f "(assert ~a)" expr))
+
+(define (smt-minimize expr)
+  "Generate SMT minimize objective"
+  (format #f "(minimize ~a)" expr))
+
+(define (smt-maximize expr)
+  "Generate SMT maximize objective"
+  (format #f "(maximize ~a)" expr))
+#+END_SRC
+
+** Constraint Engine Module
+#+BEGIN_SRC scheme :tangle src/core/constraint-engine.scm
+;;; core/constraint-engine.scm --- Native constraint propagation engine
+
+(define-module (core constraint-engine)
+  #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-9)
+  #:use-module (srfi srfi-26)
+  #:use-module (ice-9 match)
+  #:export (<domain> make-domain domain? domain-values
+            <variable> make-variable variable? variable-name variable-domain
+            <constraint> make-constraint constraint? 
+            constraint-variables constraint-predicate
+            solve-csp
+            all-different-constraint
+            sum-constraint))
+
+;; Domain representation
+(define-record-type <domain>
+  (make-domain values)
+  domain?
+  (values domain-values set-domain-values!))
+
+;; Variable representation
+(define-record-type <variable>
+  (make-variable name domain)
+  variable?
+  (name variable-name)
+  (domain variable-domain))
+
+;; Constraint representation
+(define-record-type <constraint>
+  (make-constraint variables predicate)
+  constraint?
+  (variables constraint-variables)
+  (predicate constraint-predicate))
+
+;; Constraint solver
+(define (solve-csp variables constraints)
+  "Simple backtracking constraint solver with constraint propagation"
+  (define (consistent? assignment)
+    (every (lambda (c)
+             (let ((vars (constraint-variables c))
+                   (pred (constraint-predicate c)))
+               (if (every (cut assoc <> assignment) vars)
+                   (apply pred (map (cut assoc-ref assignment <>) vars))
+                   #t)))
+           constraints))
+  
+  (define (select-unassigned-variable assignment)
+    ;; MRV heuristic: choose variable with smallest domain
+    (let ((unassigned (filter (lambda (v) (not (assoc v assignment))) variables)))
+      (and (not (null? unassigned))
+           (fold (lambda (v best)
+                   (if (< (length (domain-values (variable-domain v)))
+                          (length (domain-values (variable-domain best))))
+                       v best))
+                 (car unassigned)
+                 (cdr unassigned)))))
+  
+  (define (backtrack assignment)
+    (if (= (length assignment) (length variables))
+        assignment  ; Solution found
+        (let ((var (select-unassigned-variable assignment)))
+          (and var
+               (any (lambda (value)
+                      (let ((new-assignment (cons (cons var value) assignment)))
+                        (and (consistent? new-assignment)
+                             (backtrack new-assignment))))
+                    (domain-values (variable-domain var)))))))
+  
+  (backtrack '()))
+
+;; Common constraints
+(define (all-different-constraint vars)
+  "All variables must have different values"
+  (make-constraint vars
+    (lambda values
+      (= (length values) (length (delete-duplicates values))))))
+
+(define (sum-constraint vars target)
+  "Sum of variables must equal target"
+  (make-constraint vars
+    (lambda values
+      (= (apply + values) target))))
+#+END_SRC
+
+* Problem Implementations
+** Change Making Problem
+#+BEGIN_SRC scheme :tangle src/problems/change-making.scm
+;;; problems/change-making.scm --- Coin change problem implementations
+
+(define-module (problems change-making)
+  #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-26)
+  #:use-module (z3 interface)
+  #:export (make-change-dp
+            make-change-z3
+            make-change-csp))
+
+;; Dynamic programming approach
+(define (make-change-dp total coins)
+  "Find minimum coins to make change for total using dynamic programming"
+  (let ((dp (make-vector (+ total 1) +inf.0)))
+    (vector-set! dp 0 0)
+    
+    (do ((amount 1 (+ amount 1)))
+        ((> amount total))
+      (for-each
+       (lambda (coin)
+         (when (<= coin amount)
+           (vector-set! dp amount
+                        (min (vector-ref dp amount)
+                             (+ 1 (vector-ref dp (- amount coin)))))))
+       coins))
+    
+    ;; Reconstruct solution
+    (if (= (vector-ref dp total) +inf.0)
+        #f
+        (let loop ((amount total)
+                   (solution '()))
+          (if (zero? amount)
+              solution
+              (let ((coin (find (lambda (c)
+                                  (and (<= c amount)
+                                       (= (vector-ref dp amount)
+                                          (+ 1 (vector-ref dp (- amount c))))))
+                                coins)))
+                (loop (- amount coin)
+                      (cons coin solution))))))))
+
+;; Z3 SMT solver approach
+(define (make-change-z3 total coins)
+  "Solve change making using Z3 SMT solver"
+  (let* ((coin-vars (map (lambda (c i)
+                          (format #f "c~a" i))
+                        coins
+                        (iota (length coins))))
+         (smt-code
+          (string-append
+           ;; Declare variables
+           (string-join
+            (map (lambda (var)
+                   (make-smt-var var "Int"))
+                 coin-vars)
+            "\n")
+           "\n"
+           ;; Non-negative constraints
+           (string-join
+            (map (lambda (var)
+                   (smt-assert (format #f "(>= ~a 0)" var)))
+                 coin-vars)
+            "\n")
+           "\n"
+           ;; Sum constraint
+           (smt-assert
+            (format #f "(= (+ ~a) ~a)"
+                    (string-join
+                     (map (lambda (var coin)
+                            (format #f "(* ~a ~a)" var coin))
+                          coin-vars coins)
+                     " ")
+                    total))
+           "\n"
+           ;; Objective
+           (smt-minimize (format #f "(+ ~a)" (string-join coin-vars " ")))
+           "\n(check-sat)\n(get-model)\n")))
+    (let ((result (z3-solve smt-code)))
+      (if (string-contains result "sat")
+          (parse-z3-model result)
+          #f))))
+
+;; Native CSP approach
+(define (make-change-csp total coins max-coins)
+  "Solve using native constraint solver"
+  (use-modules (core constraint-engine))
+  
+  (let* ((coin-vars
+          (map (lambda (coin i)
+                 (make-variable
+                  (string->symbol (format #f "coin-~a" i))
+                  (make-domain (iota (+ (quotient total coin) 1)))))
+               coins (iota (length coins))))
+         (constraints
+          (list
+           ;; Sum constraint
+           (make-constraint coin-vars
+             (lambda counts
+               (= (apply + (map * counts coins)) total)))
+           ;; Minimize total coins
+           (make-constraint coin-vars
+             (lambda counts
+               (<= (apply + counts) max-coins))))))
+    
+    ;; Try increasing max-coins until solution found
+    (let loop ((max max-coins))
+      (or (solve-csp coin-vars constraints)
+          (loop (+ max 1))))))
+#+END_SRC
+
+* Examples and Tests
+** Example Runner
+#+BEGIN_SRC scheme :tangle examples/run-examples.scm :shebang #!/usr/bin/env guile
+#!/usr/bin/env guile
+!#
+
+(add-to-load-path (dirname (dirname (current-filename))))
+
+(use-modules (problems change-making)
+             (ice-9 format))
+
+(define (run-change-example)
+  (let* ((coins '(10 9 1))
+         (total 37))
+    (format #t "=== Change Making Problem ===\n")
+    (format #t "Making ~a cents with coins ~a\n\n" total coins)
+    
+    ;; Dynamic Programming
+    (format #t "1. Dynamic Programming Solution:\n")
+    (let ((solution (make-change-dp total coins)))
+      (format #t "   Solution: ~a (total: ~a coins)\n\n" 
+              solution (length solution)))
+    
+    ;; Z3 Solver
+    (format #t "2. Z3 SMT Solver Solution:\n")
+    (let ((result (make-change-z3 total coins)))
+      (if result
+          (format #t "   ~a\n\n" result)
+          (format #t "   No solution found\n\n")))
+    
+    ;; Native CSP
+    (format #t "3. Native CSP Solution:\n")
+    (let ((result (make-change-csp total coins 10)))
+      (if result
+          (format #t "   ~a\n" result)
+          (format #t "   No solution found\n")))))
+
+(run-change-example)
+#+END_SRC
+
+** Unit Tests
+#+BEGIN_SRC scheme :tangle tests/unit/test-change-making.scm
+(use-modules (srfi srfi-64)
+             (problems change-making))
+
+(test-begin "change-making")
+
+(test-equal "DP solution for article example"
+  4
+  (length (make-change-dp 37 '(10 9 1))))
+
+(test-equal "DP solution for simple case"
+  2
+  (length (make-change-dp 6 '(1 3 4))))
+
+(test-assert "Z3 finds solution"
+  (make-change-z3 37 '(10 9 1)))
+
+(test-end "change-making")
+#+END_SRC
+
+* Build and Run
+** Makefile
+#+BEGIN_SRC makefile :tangle Makefile
+.PHONY: all setup test examples clean
+
+all: setup
+
+setup:
+	sh scripts/create-structure.sh
+	sh scripts/install-deps.sh
+
+test:
+	guile -L . tests/unit/test-change-making.scm
+
+examples:
+	./examples/run-examples.scm
+
+clean:
+	find . -name "*.go" -delete
+	find . -name "*~" -delete
+
+tangle:
+	emacs --batch -l org --eval "(org-babel-tangle-file \"setup.org\")"
+#+END_SRC
+
+* README Generation
+#+BEGIN_SRC markdown :tangle README.md
+# Guile Constraint Solver
+
+Constraint solving approaches in Guile Scheme, inspired by Hillel Wayne's 
+"Many Hard Leetcode Problems are Easy Constraint Problems" article.
+
+## Features
+
+- Native Guile constraint propagation engine
+- Z3 SMT solver integration via SMT-LIB2
+- Example implementations of classic constraint problems
+- Comparison between different solving approaches
+
+## Installation
+
+On FreeBSD:
+
+```bash
+# Clone the repository
+git clone https://github.com/dsp-dr/guile-constraint-solver.git
+cd guile-constraint-solver
+
+# Run setup (installs dependencies and creates structure)
+make setup
+```
+
+## Usage
+
+```scheme
+(use-modules (problems change-making))
+
+;; Solve coin change problem
+(make-change-dp 37 '(10 9 1))  ; => (10 9 9 9)
+```
+
+## Examples
+
+Run all examples:
+
+```bash
+make examples
+```
+
+## Testing
+
+```bash
+make test
+```
+
+## License
+
+[Your preferred license]
+#+END_SRC
+
+* Next Steps
+** TODO Items
+- [ ] Implement remaining problems from article
+- [ ] Add more constraint types (linear, boolean, etc.)
+- [ ] Create GUI visualizations using Guile-Cairo
+- [ ] Benchmark native vs Z3 performance
+- [ ] Add parallel solving capabilities
+- [ ] Create tutorial documentation
+#+END_SRC

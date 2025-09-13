@@ -1,0 +1,4 @@
+;; Local Guile configuration
+(add-to-load-path (dirname (current-filename)))
+(add-to-load-path (string-append (dirname (current-filename)) "/lib"))
+(add-to-load-path (string-append (dirname (current-filename)) "/src"))
